@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Four frets, three strings and a green target note. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#B8BCC2" android:strokeWidth="2.5" android:pathData="M34,32 V76 M50,32 V76 M64,32 V76 M76,32 V76" />
+    <path android:strokeColor="#EDE4CC" android:strokeWidth="4" android:pathData="M30,32 V76" />
+    <path android:strokeColor="#E0E0E0" android:strokeWidth="1.5" android:pathData="M28,40 H80 M28,54 H80" />
+    <path android:strokeColor="#CBA86E" android:strokeWidth="2.5" android:pathData="M28,68 H80" />
+    <path android:fillColor="#2ECC71" android:pathData="M57,54 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+</vector>
