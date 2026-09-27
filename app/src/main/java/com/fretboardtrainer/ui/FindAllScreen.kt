@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -48,7 +49,9 @@ fun FindAllContent(
             NoteCard(pc?.let { Notes.fullName(it, withOctave = false) }, accent, Modifier.width(190.dp).fillMaxHeight()) {
                 val found = round.octaves.withIndex().filter { it.value in round.found }.map { it.index }.toSet()
                 OctaveDots(round.octaves.size, found, TargetGreen)
-                Text("${round.found.size} of ${round.octaves.size} found", color = MutedGray, modifier = Modifier.padding(top = 6.dp))
+                Text("Octaves: ${round.found.size} of ${round.octaves.size}", color = MutedGray, modifier = Modifier.padding(top = 6.dp))
+                // The same pitch can live on several strings; say how many places that makes.
+                pc?.let { Text("${region.positionsOf(it).size} places on the neck", color = MutedGray, style = MaterialTheme.typography.bodySmall) }
             }
             Column(Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp)) {
                 val scope = if (settings.position == 0) {
@@ -74,9 +77,12 @@ fun FindAllContent(
         val name = pc?.let { Notes.fullName(it, withOctave = false) }
         val (message, color) = when (feedback) {
             null -> "Press Start, then play every octave of each note shown." to Color.White
-            FindAllFeedback.Listening -> "Play every $name you can find!" to Color.White
-            is FindAllFeedback.Found -> "${Notes.name(feedback.midi)} found! ${round.octaves.size - round.found.size} to go." to TargetGreen
-            is FindAllFeedback.AlreadyFound -> "You already found ${Notes.name(feedback.midi)}; look for another octave." to MissOrange
+            FindAllFeedback.Listening -> "Play $name in every octave! Each octave counts once, wherever you play it." to Color.White
+            is FindAllFeedback.Found -> {
+                val left = round.octaves.size - round.found.size
+                "${Notes.name(feedback.midi)} found: all its places lit up! $left ${if (left == 1) "octave" else "octaves"} to go." to TargetGreen
+            }
+            is FindAllFeedback.AlreadyFound -> "You already found ${Notes.name(feedback.midi)} (same pitch, other string); look for another octave." to MissOrange
             is FindAllFeedback.Wrong -> (if (feedback.outside) "That $name is outside the area." else "That was ${Notes.fullName(feedback.playedMidi, false)}.") to WrongRed
             is FindAllFeedback.Done -> "All found in ${formatSeconds(feedback.millis)}!" to TargetGreen
             FindAllFeedback.TimeUp -> "Time's up! The orange ones were missing." to MissOrange

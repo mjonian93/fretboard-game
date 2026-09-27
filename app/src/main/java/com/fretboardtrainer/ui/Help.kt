@@ -19,8 +19,9 @@ object Help {
 
     val FIND_ALL = listOf(
         "A note name appears. Play it in every octave you can reach: in a hand position, or across the whole neck.",
-        "Each octave you play lights up on the fretboard; the dots show how many are left.",
-        "The mic hears pitch, not strings: when the same pitch exists on two strings, playing either one counts, and both light up.",
+        "It counts octaves, not places: G in frets 0–12 lives in 7 places but only 3 octaves (G2, G3, G4).",
+        "The mic hears pitch, not strings, so each octave counts once wherever you play it, and then all its places light up.",
+        "The dots show the octaves, lowest to highest, filling in as you find them.",
         "The time allowed grows with the number of octaves to find.",
     )
 
