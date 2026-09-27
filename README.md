@@ -1,17 +1,36 @@
 # Fretboard Trainer
 
-Android app for learning the notes on the guitar neck (standard tuning, 16 frets, American note names).
+Android app for learning the notes on the guitar neck: 16 frets, American note names,
+standard and alternate tunings, right- or left-handed.
 
 ## Modes
 
-1. **Name the note** (no guitar): a fret lights up on the fretboard; tap its note name.
+1. **Name the note** (no guitar): a fret lights up (and sounds); tap its note name.
 2. **Find the note** (guitar + mic): choose a hand position (position N = index finger on fret N,
-   covering frets N..N+3 plus one-fret stretches). A note name is shown; play it, the app listens.
+   covering frets N..N+3 plus one-fret stretches). A note name is shown; play it.
    With *Specific octave* on, dots under the name say which occurrence in the position is wanted:
-   `●○○` lowest, `○●○` middle, `○○●` highest. After each note, every place it lives in the position is shown.
+   `●○○` lowest, `○●○` middle, `○○●` highest. Afterwards every place the note lives is shown.
+3. **Find them all** (guitar + mic): play every octave of a note, in a position or across the neck.
+4. **Intervals** (guitar + mic): a root lights up; play the requested interval above it
+   (chord tones by default: 3rds, 5th, 7ths).
 
-Pitch detection is the YIN algorithm (`app/src/main/java/com/fretboardtrainer/audio/YinPitchDetector.kt`),
-44.1 kHz, 4096-sample window; a note must hold for ~4 frames (~190 ms) to count.
+Plus a **Tuner** (with mic calibration) and a **Progress** screen: fretboard accuracy heatmap and
+per-note / per-interval accuracy and answer time.
+
+Every mode has:
+- **Timing**: untimed, seconds per note, or **tempo** (BPM × beats per note) with metronome,
+  live −/+ BPM control and optional auto speed-up (+5 BPM every 5 correct in a row).
+- **Sessions** of 10/20/50 notes (or endless) ending with a summary: accuracy, average time,
+  best streak, tempo reached, and the notes to practise more.
+- **Adaptive practice**: lifetime stats are saved, and notes you miss come up more often.
+
+## How it works
+
+- Pitch detection: YIN (`audio/YinPitchDetector.kt`), 44.1 kHz, 4096-sample window, with a
+  noise gate set by the mic sensitivity (or calibration). A note must hold ~190 ms to count.
+- The mic hears pitch, not strings: the same pitch on two strings is indistinguishable.
+- `game/GameViewModel.kt` is the shared engine (timing, tempo, sessions, stats, mic);
+  each mode only implements `playRound()`.
 
 ## Toolchain
 
@@ -25,7 +44,7 @@ Load it in each shell:
 ## Build, test, run
 
 ```sh
-./gradlew testDebugUnitTest      # unit tests (notes, positions, pitch detection, game logic)
+./gradlew testDebugUnitTest      # unit tests
 ./gradlew assembleDebug          # APK in app/build/outputs/apk/debug/
 
 emulator -avd fretboard -allow-host-audio &   # start the emulator (uses the PC microphone)
@@ -33,5 +52,6 @@ emulator -avd fretboard -allow-host-audio &   # start the emulator (uses the PC 
 adb shell am start -n com.fretboardtrainer/.MainActivity
 ```
 
-If the emulator doesn't hear the PC mic, enable it in the emulator's *Extended controls → Microphone →
-"Virtual microphone uses host audio input"*, or run `adb emu avd hostmicon`.
+If the emulator doesn't hear the PC mic, run `adb emu avd hostmicon`, or enable it in the
+emulator's *Extended controls → Microphone → "Virtual microphone uses host audio input"*.
+The mode screens show a mic level meter; the white tick is the sensitivity threshold.

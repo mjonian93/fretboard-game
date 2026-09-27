@@ -17,11 +17,22 @@ class NotesTest {
 
     @Test
     fun standardTuning() {
-        assertEquals("E2", Notes.name(Tuning.midiAt(FretPosition(6, 0))))
-        assertEquals("E4", Notes.name(Tuning.midiAt(FretPosition(1, 0))))
+        val t = Tuning.STANDARD
+        assertEquals("E2", Notes.name(t.midiAt(FretPosition(6, 0))))
+        assertEquals("E4", Notes.name(t.midiAt(FretPosition(1, 0))))
         // 5th fret of each string equals the next open string, except G -> B (4th fret).
-        assertEquals(Tuning.openMidi(5), Tuning.midiAt(FretPosition(6, 5)))
-        assertEquals(Tuning.openMidi(2), Tuning.midiAt(FretPosition(3, 4)))
+        assertEquals(t.openMidi(5), t.midiAt(FretPosition(6, 5)))
+        assertEquals(t.openMidi(2), t.midiAt(FretPosition(3, 4)))
+        assertEquals("EADGBE", t.letters)
+    }
+
+    @Test
+    fun alternateTunings() {
+        assertEquals("DADGBE", Tuning.DROP_D.letters)
+        assertEquals("DADGAD", Tuning.DADGAD.letters)
+        assertEquals("DGDGBD", Tuning.OPEN_G.letters)
+        assertEquals("Eb Ab Db Gb Bb Eb", Tuning.HALF_STEP_DOWN.letters)
+        assertEquals(Tuning.STANDARD, Tuning.byId("nonsense"))
     }
 
     @Test

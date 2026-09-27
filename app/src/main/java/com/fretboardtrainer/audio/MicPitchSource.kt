@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.util.Log
 import com.fretboardtrainer.music.PitchReading
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -25,6 +24,8 @@ class MicPitchSource(
     private val sampleRate: Int = 44100,
     private val windowSize: Int = 4096,
     private val hopSize: Int = 2048,
+    /** Frames quieter than this (RMS, 0..1) are treated as silence. */
+    private val gateRms: Double = 0.004,
 ) {
     @SuppressLint("MissingPermission")
     fun frames(): Flow<MicFrame> = flow {
@@ -44,12 +45,10 @@ class MicPitchSource(
             error("Could not open the microphone")
         }
 
-        val detector = YinPitchDetector(sampleRate, windowSize)
+        val detector = YinPitchDetector(sampleRate, windowSize, silenceRms = gateRms)
         val window = FloatArray(windowSize)
         val hop = FloatArray(hopSize)
         record.startRecording()
-        Log.d(TAG, "Recording at ${record.sampleRate} Hz, source=${record.audioSource}")
-        var frameCount = 0
         try {
             while (currentCoroutineContext().isActive) {
                 var read = 0
@@ -61,7 +60,6 @@ class MicPitchSource(
                 System.arraycopy(window, hopSize, window, 0, windowSize - hopSize)
                 System.arraycopy(hop, 0, window, windowSize - hopSize, hopSize)
                 val frame = MicFrame(YinPitchDetector.rms(hop), detector.detect(window)?.let(PitchReading::fromFrequency))
-                if (++frameCount % 20 == 0) Log.d(TAG, "level=%.5f pitch=%s".format(frame.level, frame.pitch))
                 emit(frame)
             }
         } finally {
@@ -70,5 +68,3 @@ class MicPitchSource(
         }
     }.flowOn(Dispatchers.Default)
 }
-
-private const val TAG = "MicPitchSource"

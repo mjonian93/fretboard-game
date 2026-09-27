@@ -1,9 +1,6 @@
 package com.fretboardtrainer.game
 
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
 import kotlin.random.Random
 
 data class Score(val hits: Int = 0, val rounds: Int = 0, val streak: Int = 0, val best: Int = 0) {
@@ -12,52 +9,52 @@ data class Score(val hits: Int = 0, val rounds: Int = 0, val streak: Int = 0, va
     fun breakStreak(): Score = copy(streak = 0)
 }
 
-/**
- * Remembers which targets you get wrong so they come up more often.
- * Each miss adds weight; each clean hit takes one back.
- */
-class MissTracker<K>(private val random: Random = Random.Default) {
-    private val misses = mutableMapOf<K, Int>()
+@Serializable
+enum class TimingMode { UNTIMED, SECONDS, TEMPO }
 
-    fun pick(pool: List<K>): K? {
-        if (pool.isEmpty()) return null
-        val weights = pool.map { 1 + 2 * (misses[it] ?: 0) }
-        var pick = random.nextInt(weights.sum())
-        for ((i, weight) in weights.withIndex()) {
-            pick -= weight
-            if (pick < 0) return pool[i]
-        }
-        return pool.last()
+/** How a session is paced and how long it lasts. */
+@Serializable
+data class SessionConfig(
+    val timing: TimingMode = TimingMode.SECONDS,
+    val seconds: Int = 6,
+    val bpm: Int = 60,
+    /** In tempo mode, each note gets this many beats. */
+    val beatsPerNote: Int = 4,
+    val metronome: Boolean = true,
+    /** In tempo mode, +[SPEED_UP_BPM] BPM after every [SPEED_UP_EVERY] correct answers in a row. */
+    val autoSpeedUp: Boolean = false,
+    /** Notes per session; 0 = endless. */
+    val length: Int = 20,
+) {
+    /** Time allowed for [notes] notes at [bpm], or null when untimed. */
+    fun noteMillis(bpm: Int, notes: Int = 1): Long? = when (timing) {
+        TimingMode.UNTIMED -> null
+        TimingMode.SECONDS -> seconds * 1000L * notes
+        TimingMode.TEMPO -> beatsPerNote * notes * 60_000L / bpm
     }
 
-    fun recordMiss(key: K) {
-        misses[key] = (misses[key] ?: 0) + 1
-    }
-
-    fun recordHit(key: K) {
-        val count = misses[key] ?: return
-        if (count <= 1) misses.remove(key) else misses[key] = count - 1
+    companion object {
+        const val MIN_BPM = 30
+        const val MAX_BPM = 240
+        const val SPEED_UP_BPM = 5
+        const val SPEED_UP_EVERY = 5
     }
 }
 
-/**
- * Runs [block] with a deadline, reporting the remaining time (1 → 0) every 50 ms.
- * Returns null if time ran out.
- */
-suspend fun <T> timedRound(totalMs: Long, onTick: (Float) -> Unit, block: suspend () -> T): T? = coroutineScope {
-    val start = System.nanoTime()
-    val ticker = launch {
-        while (true) {
-            val elapsedMs = (System.nanoTime() - start) / 1_000_000f
-            onTick((1f - elapsedMs / totalMs).coerceAtLeast(0f))
-            delay(50)
-        }
+interface ModeSettings {
+    val session: SessionConfig
+}
+
+/** Picks from [pool] with probability proportional to [weight]. */
+fun <T> Random.weightedPick(pool: List<T>, weight: (T) -> Double): T? {
+    if (pool.isEmpty()) return null
+    val weights = pool.map(weight)
+    var pick = nextDouble() * weights.sum()
+    for ((i, w) in weights.withIndex()) {
+        pick -= w
+        if (pick < 0) return pool[i]
     }
-    try {
-        withTimeoutOrNull(totalMs) { block() }
-    } finally {
-        ticker.cancel()
-    }
+    return pool.last()
 }
 
 /**

@@ -6,71 +6,67 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fretboardtrainer.game.NameNoteRound
 import com.fretboardtrainer.game.NameNoteSettings
-import com.fretboardtrainer.game.NameNoteState
 import com.fretboardtrainer.game.NameResult
+import com.fretboardtrainer.game.SessionState
 import com.fretboardtrainer.music.FRET_COUNT
 import com.fretboardtrainer.music.Notes
+import com.fretboardtrainer.music.STRING_COUNT
 import com.fretboardtrainer.music.Tuning
 
 @Composable
-fun NameNoteScreen(
-    state: NameNoteState,
-    onBack: () -> Unit,
-    onStart: () -> Unit,
-    onStop: () -> Unit,
-    onOpenSettings: () -> Unit,
+fun NameNoteContent(
+    round: NameNoteRound,
+    session: SessionState,
+    settings: NameNoteSettings,
+    tuning: Tuning,
+    mirrored: Boolean,
     onAnswer: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val targetClass = state.target?.let { Notes.pitchClass(Tuning.midiAt(it)) }
-    val result = state.result
+    val target = round.target
+    val result = round.result
+    val targetClass = target?.let { Notes.pitchClass(tuning.midiAt(it)) }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp, vertical = 6.dp)) {
-        GameHeader("Name the note", state.score, state.running, state.timeLeft, onBack, onStart, onStop, onOpenSettings)
-
-        val markers = state.target?.let { target ->
+    Column(modifier) {
+        val markers = target?.let {
             listOf(
                 FretMarker(
-                    position = target,
+                    position = it,
                     color = if (result == null || result is NameResult.Correct) TargetGreen else MissOrange,
-                    label = if (result != null) Notes.name(Tuning.midiAt(target), withOctave = false) else null,
+                    label = if (result != null) Notes.name(tuning.midiAt(it), withOctave = false) else null,
                     pulsing = result == null,
                     ring = if (result is NameResult.Wrong) WrongRed else null,
                 ),
             )
         } ?: emptyList()
-        Fretboard(FRET_COUNT, 0..state.settings.maxFret, markers, Modifier.weight(1f).fillMaxWidth())
+        Fretboard(FRET_COUNT, 0..settings.maxFret, markers, Modifier.weight(1f).fillMaxWidth(), mirrored)
 
         val (message, color) = when (result) {
-            null -> (if (state.running) "Which note is the green one?" else "Press Start, then tap the name of each note that lights up.") to Color.White
-            is NameResult.Correct -> "Correct! ${Notes.fullName(result.pitchClass, withOctave = false)}" to TargetGreen
+            null -> (if (session.running) "Which note is the green one?" else "Press Start, then tap the name of each note that lights up.") to Color.White
+            is NameResult.Correct -> "Correct! ${Notes.fullName(result.pitchClass, false)} in ${formatSeconds(result.millis)}" to TargetGreen
             is NameResult.Wrong -> "Not ${Notes.fullName(result.chosenPitchClass, false)}, it's ${targetClass?.let { Notes.fullName(it, false) }}" to WrongRed
             NameResult.TimeUp -> "Time's up! It was ${targetClass?.let { Notes.fullName(it, false) }}" to MissOrange
         }
         Text(message, color = color, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 4.dp))
 
         NoteButtons(
-            naturalsOnly = state.settings.naturalsOnly,
-            enabled = state.running && result == null,
+            naturalsOnly = settings.naturalsOnly,
+            enabled = session.running && target != null && result == null,
             highlight = { pc ->
                 when {
                     result == null -> null
@@ -130,37 +126,29 @@ private fun NoteButtons(naturalsOnly: Boolean, enabled: Boolean, highlight: (Int
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NameNoteSettingsDialog(settings: NameNoteSettings, onChange: (NameNoteSettings) -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
-        title = { Text("Name the note: settings") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SettingSlider("Frets: open to ${settings.maxFret}", settings.maxFret, 1..FRET_COUNT) {
-                    onChange(settings.copy(maxFret = it))
-                }
-                Text("Strings", style = MaterialTheme.typography.titleSmall)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (string in 1..Tuning.STRING_COUNT) {
-                        val selected = string in settings.strings
-                        FilterChip(
-                            selected = selected,
-                            onClick = {
-                                val strings = if (selected) settings.strings - string else settings.strings + string
-                                if (strings.isNotEmpty()) onChange(settings.copy(strings = strings))
-                            },
-                            label = { Text("$string (${Tuning.stringLabel(string)})") },
-                        )
-                    }
-                }
-                SettingSwitch("Natural notes only", "Skip sharps and flats", settings.naturalsOnly) {
-                    onChange(settings.copy(naturalsOnly = it))
-                }
-                SettingSlider("Time per note: ${settings.secondsPerNote} s", settings.secondsPerNote, 2..15) {
-                    onChange(settings.copy(secondsPerNote = it))
-                }
-            }
-        },
-    )
+fun NameNoteSettingsContent(settings: NameNoteSettings, tuning: Tuning, onChange: (NameNoteSettings) -> Unit) {
+    SettingSlider("Frets: open to ${settings.maxFret}", settings.maxFret, 1..FRET_COUNT) {
+        onChange(settings.copy(maxFret = it))
+    }
+    Text("Strings", style = MaterialTheme.typography.titleSmall)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (string in 1..STRING_COUNT) {
+            val selected = string in settings.strings
+            FilterChip(
+                selected = selected,
+                onClick = {
+                    val strings = if (selected) settings.strings - string else settings.strings + string
+                    if (strings.isNotEmpty()) onChange(settings.copy(strings = strings))
+                },
+                label = { Text("$string (${tuning.stringLabel(string)})") },
+            )
+        }
+    }
+    SettingSwitch("Natural notes only", "Skip sharps and flats", settings.naturalsOnly) {
+        onChange(settings.copy(naturalsOnly = it))
+    }
+    SettingSwitch("Play the note", "Hear each note when it lights up", settings.playSound) {
+        onChange(settings.copy(playSound = it))
+    }
+    SessionSettings(settings.session, { onChange(settings.copy(session = it)) })
 }
