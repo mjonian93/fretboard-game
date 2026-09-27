@@ -15,13 +15,17 @@ android {
         applicationId = "com.fretboardtrainer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            // Personal test builds: signed with the debug key. Use a real upload key for the Play Store.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
