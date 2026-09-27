@@ -3,6 +3,13 @@
 Android app for learning the notes on the guitar neck: 16 frets, American note names,
 standard and alternate tunings, right- or left-handed.
 
+## Install
+
+Download `FretboardTrainer-<version>.apk` from the
+[latest release](https://github.com/mjonian93/fretboard-game/releases/latest) on your phone,
+open it and allow installing from that source. Requires Android 8.0 or newer.
+The app asks for microphone access for the guitar modes and the tuner.
+
 ## Modes
 
 1. **Name the note** (no guitar): a fret lights up (and sounds); tap its note name.
@@ -55,3 +62,23 @@ adb shell am start -n com.fretboardtrainer/.MainActivity
 If the emulator doesn't hear the PC mic, run `adb emu avd hostmicon`, or enable it in the
 emulator's *Extended controls → Microphone → "Virtual microphone uses host audio input"*.
 The mode screens show a mic level meter; the white tick is the sensitivity threshold.
+
+## Releasing
+
+Release builds are signed with the key described in `keystore.properties` (git-ignored;
+key and a backup of the properties live in `/mnt/SSD2/devtools/keys` — back them up, because
+losing the key means users can't update the app). Without that file, release builds fall
+back to the debug key.
+
+1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`, and add the notes to `CHANGELOG.md`.
+2. Build and checksum:
+   ```sh
+   ./gradlew testDebugUnitTest assembleRelease
+   cp app/build/outputs/apk/release/app-release.apk dist/FretboardTrainer-X.Y.Z.apk
+   (cd dist && sha256sum FretboardTrainer-X.Y.Z.apk > FretboardTrainer-X.Y.Z.apk.sha256)
+   ```
+3. Tag and publish:
+   ```sh
+   git tag -a vX.Y.Z -m "Fretboard Trainer X.Y.Z" && git push origin main vX.Y.Z
+   gh release create vX.Y.Z dist/FretboardTrainer-X.Y.Z.apk* --title "Fretboard Trainer X.Y.Z" --notes-file <notes>
+   ```
